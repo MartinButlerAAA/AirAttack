@@ -41,3 +41,10 @@ bool scaleImage(unsigned int xmax, unsigned int ymax, unsigned int ImageP[ymax][
 
 // Draw a line of the colour specified.
 bool drawLine(float x1, float y1, float x2, float y2, unsigned int colour);
+
+// Draw text at the position specified.
+bool drawText(char* dispString, unsigned int colour, unsigned int scale, unsigned int xpos, unsigned int ypos, unsigned int display);
+
+// Draw text centred on the position specified.
+bool drawTextCentred(char* dispString, unsigned int colour, unsigned int scale, unsigned int xpos, unsigned int ypos, unsigned int display);
+

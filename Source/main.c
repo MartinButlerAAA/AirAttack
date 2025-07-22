@@ -98,20 +98,23 @@ void displayEnd()
 // Get the player movement from the Joycon and Button controls.
 void getPlayerControls()
 {
-	VPADStatus status;			// Status returned for the game pad buttons.
+	VPADStatus status;		// Status returned for the game pad buttons.
+	VPADReadError error;	// Error from gamepad.
 
 	// Get the VPAD button status.
-	VPADRead(VPAD_CHAN_0, &status, 1, NULL);
-
-	// Move the x and y shift values for the controls. SO that the background and all objects move correctly.
-	if ((status.hold & VPAD_BUTTON_DOWN)  || (status.hold & VPAD_STICK_L_EMULATION_DOWN)) { yshift = yshift - 15; }
-	if ((status.hold & VPAD_BUTTON_LEFT)  || (status.hold & VPAD_STICK_L_EMULATION_LEFT)) { xshift = xshift - 20; }
-	if ((status.hold & VPAD_BUTTON_RIGHT) || (status.hold & VPAD_STICK_L_EMULATION_RIGHT)) { xshift = xshift + 20; }
-	if ((status.hold & VPAD_BUTTON_UP)    || (status.hold & VPAD_STICK_L_EMULATION_UP)) { yshift = yshift + 15; }
-	if (yshift < YMOVEMIN) { yshift = YMOVEMIN; }
-	if (yshift > YMOVEMAX) { yshift = YMOVEMAX; }
-	if (xshift < XMOVEMIN) { xshift = XMOVEMIN; }
-	if (xshift > XMOVEMAX) { xshift = XMOVEMAX; }
+	VPADRead(VPAD_CHAN_0, &status, 1, &error);	// Get the VPAD button last pressed.
+	if (error == VPAD_READ_SUCCESS)				// Only process buttons if no errors (e.g. gamepad lost power).
+	{
+		// Move the x and y shift values for the controls. SO that the background and all objects move correctly.
+		if ((status.hold & VPAD_BUTTON_DOWN)  || (status.hold & VPAD_STICK_L_EMULATION_DOWN))  { yshift = yshift - 15; }
+		if ((status.hold & VPAD_BUTTON_LEFT)  || (status.hold & VPAD_STICK_L_EMULATION_LEFT))  { xshift = xshift - 20; }
+		if ((status.hold & VPAD_BUTTON_RIGHT) || (status.hold & VPAD_STICK_L_EMULATION_RIGHT)) { xshift = xshift + 20; }
+		if ((status.hold & VPAD_BUTTON_UP)    || (status.hold & VPAD_STICK_L_EMULATION_UP))    { yshift = yshift + 15; }
+		if (yshift < YMOVEMIN) { yshift = YMOVEMIN; }
+		if (yshift > YMOVEMAX) { yshift = YMOVEMAX; }
+		if (xshift < XMOVEMIN) { xshift = XMOVEMIN; }
+		if (xshift > XMOVEMAX) { xshift = XMOVEMAX; }
+	}
 }
 
 // Add a new plane to the screen.
@@ -212,30 +215,31 @@ void checkHits()
 // Check if fire pressed, start new bullet or progress flying bullets.
 void processBullets()
 {
-	VPADStatus status;			// Status returned for the game pad buttons.
+	VPADStatus status;		// Status returned for the game pad buttons.
+	VPADReadError error;	// Error from gamepad.
 
-	// Get the VPAD button status.
-	VPADRead(VPAD_CHAN_0, &status, 1, NULL);
-
-	// Check the fire buttons. If the bullets aren't currently flying, fire new bullets.
-	if (((status.hold & VPAD_BUTTON_ZL) || (status.hold & VPAD_BUTTON_ZR)) && (bullets[0].state == STOPPED))
+	VPADRead(VPAD_CHAN_0, &status, 1, &error);	// Get the VPAD button last pressed.
+	if (error == VPAD_READ_SUCCESS)				// Only process buttons if no errors (e.g. gamepad lost power).
 	{
-		putsoundSel(FIRE);
-		bullets[0].state = FLYING;
-		bullets[0].x = 0;
-		bullets[0].y = YDISPMAX;
-		bullets[0].xend = XDISPCTR + xshift;
-		bullets[0].yend = YDISPCTR - yshift;
-		bullets[0].pct = 99.0;
+		// Check the fire buttons. If the bullets aren't currently flying, fire new bullets.
+		if (((status.hold & VPAD_BUTTON_ZL) || (status.hold & VPAD_BUTTON_ZR)) && (bullets[0].state == STOPPED))
+		{
+			putsoundSel(FIRE);
+			bullets[0].state = FLYING;
+			bullets[0].x = 0;
+			bullets[0].y = YDISPMAX;
+			bullets[0].xend = XDISPCTR + xshift;
+			bullets[0].yend = YDISPCTR - yshift;
+			bullets[0].pct = 99.0;
 
-		bullets[1].state = FLYING;
-		bullets[1].x = XDISPMAX;
-		bullets[1].y = YDISPMAX;
-		bullets[1].xend = XDISPCTR + xshift;
-		bullets[1].yend = YDISPCTR - yshift;
-		bullets[1].pct = 99.0;
+			bullets[1].state = FLYING;
+			bullets[1].x = XDISPMAX;
+			bullets[1].y = YDISPMAX;
+			bullets[1].xend = XDISPCTR + xshift;
+			bullets[1].yend = YDISPCTR - yshift;
+			bullets[1].pct = 99.0;
+		}
 	}
-
 	// If the bullets are flying display them.
 	if (bullets[0].state == FLYING)
 	{
@@ -341,10 +345,16 @@ void drawBorder()
 // As the game is a graphics game this includes the calls to game processing.
 void displayTV()
 {
-	VPADStatus status;			// Status returned for the game pad buttons.
+	VPADStatus status;		// Status returned for the game pad buttons.
+	VPADReadError error;	// Error from gamepad.
+
+	char sscore[100] = "\0";	// Strings to display the current score.
 
 	// Clear the TV to have a sky background.
 	OSScreenClearBufferEx(SCREEN_TV, 0x8CFFFB00u);
+
+	sprintf(sscore, "Score:% 6i ", score);
+	drawText(sscore, 0x01010100u, 2, 20, 100, SCREEN_TV);
 
 	// If we are waiting to start show the game screen with planes flying, but don't play.
 	if (gameState == WAITING)
@@ -359,33 +369,34 @@ void displayTV()
 		// Put the gun sight in the centre of the screen.
 		drawImage(SIGHTX, SIGHTY, sightImage, XDISPCTR, YDISPCTR);
 
-		// Put the the start message on the screen.
-		drawImage(450, 110, PressXImage, XDISPCTR, 100);
+		// Put the the start message on the screen, centred, but above sight.
+		drawTextCentred("Press X to Start", 0xFE000000u, 4, 1280/2, 720/3, SCREEN_TV);
 
 		drawBorder();	// Put a border round the play area of the screen.
 
-		// Get the VPAD button status.
-		VPADRead(VPAD_CHAN_0, &status, 1, NULL);
-
-		// If X is pressed start a new game.
-		if (status.trigger & VPAD_BUTTON_X)
+		VPADRead(VPAD_CHAN_0, &status, 1, &error);	// Get the VPAD button last pressed.
+		if (error == VPAD_READ_SUCCESS)				// Only process buttons if no errors (e.g. gamepad lost power).
 		{
-			score = 0;		// Score and other controls are set for a new game.
-
-			// Initialise the bullets to doing nothing. 
-			// This initialisation should be redundant but is done just in case.
-			bullets[0].state = STOPPED;
-			bullets[1].state = STOPPED;
-
-			// The planes array as cleared to no planes flying.
-			for (int a = 0; a < MAXPLANES; a++)
+			// If X is pressed start a new game.
+			if (status.trigger & VPAD_BUTTON_X)
 			{
-				planes[a].state = STOPPED;
-				planes[a].pct = 1.0;
-				planes[a].shotCnt = 0;
+				score = 0;		// Score and other controls are set for a new game.
+
+				// Initialise the bullets to doing nothing. 
+				// This initialisation should be redundant but is done just in case.
+				bullets[0].state = STOPPED;
+				bullets[1].state = STOPPED;
+
+				// The planes array as cleared to no planes flying.
+				for (int a = 0; a < MAXPLANES; a++)
+				{
+					planes[a].state = STOPPED;
+					planes[a].pct = 1.0;
+					planes[a].shotCnt = 0;
+				}
+				gameState = PLAYING;	// Move to playing.
+				putsoundSel(BKGNDPLAY);	// Game music.
 			}
-			gameState = PLAYING;	// Move to playing.
-			putsoundSel(BKGNDPLAY);	// Game music.
 		}
 	}
 	// Play the game until the end.
@@ -429,26 +440,15 @@ void displayTV()
 // Display information on the Gamepad screen.
 void displayGPad()
 {
-//	char stime[100]  = "\0";	// Strings to display delay time. ** only displayed during development.
-	char sscore[100] = "\0";	// Strings to display the current score.
-
 	// Clear the Gamepad to have a grey background.
 	OSScreenClearBufferEx(SCREEN_DRC, 0x80808000u);
 
-	OSScreenPutFontEx(SCREEN_DRC, 3,  1, "Air Attack!");
-
-	OSScreenPutFontEx(SCREEN_DRC, 3,  3, "You're the last line of defence.");
-	OSScreenPutFontEx(SCREEN_DRC, 3,  4, "If a plane gets through it's all over!");
-
-	OSScreenPutFontEx(SCREEN_DRC, 3,  6, "Use the left joycon or direction buttons to move.");
-	OSScreenPutFontEx(SCREEN_DRC, 3,  7, "Press ZL or ZR to fire.");
-	OSScreenPutFontEx(SCREEN_DRC, 3,  8, "Press X to start.");
-
-	sprintf(sscore, "Score: % 6i ", score);
-	OSScreenPutFontEx(SCREEN_DRC, 3, 10, sscore);
-
-//	sprintf(stime, "Time: % 6i ", tim);	** only displayed during development.
-//	OSScreenPutFontEx(SCREEN_DRC, 3, 12, stime);
+	drawText("Air Attack!", 0xFEFEFE00u, 4, 10, 10, SCREEN_DRC);
+	drawText("You're the last line of defence.", 0xFEFEFE00u, 2, 10, 100, SCREEN_DRC);
+	drawText("If a plane gets through it's all over!", 0xFEFEFE00u, 2, 10, 130, SCREEN_DRC);
+	drawText("Left joycon or direction buttons to move.", 0xFEFEFE00u, 2, 10, 200, SCREEN_DRC);
+	drawText("Press ZL or ZR to fire.", 0xFEFEFE00u, 2, 10, 230, SCREEN_DRC);
+	drawText("Press X to start.", 0xFEFEFE00u, 2, 10, 300, SCREEN_DRC);
 
 	// Flip the screen buffer to show the new display.
 	OSScreenFlipBuffersEx(SCREEN_DRC);
