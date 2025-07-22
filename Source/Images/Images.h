@@ -6,8 +6,6 @@
 
 #include "Game.bmp.h"
 
-#include "PressX.bmp.h"
-
 #include "Exp1.bmp.h"
 #include "Exp2.bmp.h"
 #include "Exp3.bmp.h"

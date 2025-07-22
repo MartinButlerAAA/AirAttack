@@ -32,6 +32,4 @@ processBmp Exp4.bmp
 processBmp Exp5.bmp
 processBmp End.bmp
 
-processBmp PressX.bmp
-
 Pause
